@@ -24,7 +24,7 @@ func (p *t_ConfigProviderENV) Load() (map[string]any, error) {
 
 	var data map[string]any = make(map[string]any)
 	for _, raw_env := range os.Environ() {
-		split_env := strings.Split(raw_env, "=")
+		split_env := strings.SplitN(raw_env, "=", 2)
 
 		if len(split_env) < 2 {
 			continue

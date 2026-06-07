@@ -28,6 +28,7 @@ func (p *t_ConfigProviderJSON) Load() (map[string]any, error) {
 		decoder := json.NewDecoder(file)
 
 		if err := decoder.Decode(&data); err != nil {
+			file.Close() // Error ignored here in favor of prior error
 			return nil, err
 		}
 

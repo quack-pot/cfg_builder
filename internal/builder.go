@@ -2,12 +2,13 @@ package internal
 
 import (
 	"log"
+	"sync"
 )
 
 type IConfigBuilder interface {
-	AddProvider(provider IConfigProvider)
-	AddJSON(filenames ...string)
-	AddENV(filenames ...string)
+	AddProvider(provider IConfigProvider) IConfigBuilder
+	AddJSON(filenames ...string) IConfigBuilder
+	AddENV(filenames ...string) IConfigBuilder
 
 	Build() (IConfig, error)
 	MustBuild() IConfig
@@ -15,6 +16,8 @@ type IConfigBuilder interface {
 
 type t_ConfigBuilder struct {
 	providers []IConfigProvider
+
+	mutex sync.RWMutex
 }
 
 func NewConfigBuilder() IConfigBuilder {
@@ -23,16 +26,22 @@ func NewConfigBuilder() IConfigBuilder {
 	}
 }
 
-func (b *t_ConfigBuilder) AddProvider(provider IConfigProvider) {
+func (b *t_ConfigBuilder) AddProvider(provider IConfigProvider) IConfigBuilder {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+
 	b.providers = append(b.providers, provider)
+	return b
 }
 
-func (b *t_ConfigBuilder) AddJSON(filenames ...string) {
+func (b *t_ConfigBuilder) AddJSON(filenames ...string) IConfigBuilder {
 	b.AddProvider(NewConfigProviderJSON(filenames...))
+	return b
 }
 
-func (b *t_ConfigBuilder) AddENV(filenames ...string) {
+func (b *t_ConfigBuilder) AddENV(filenames ...string) IConfigBuilder {
 	b.AddProvider(NewConfigProviderENV(filenames...))
+	return b
 }
 
 func MergeProviderData(provider_data map[string]any, all_data map[string]any) map[string]any {
@@ -67,6 +76,9 @@ func MergeProviderData(provider_data map[string]any, all_data map[string]any) ma
 }
 
 func (b *t_ConfigBuilder) Build() (IConfig, error) {
+	b.mutex.RLock()
+	defer b.mutex.RUnlock()
+
 	var data map[string]any = nil
 
 	for _, provider := range b.providers {
@@ -90,7 +102,7 @@ func (b *t_ConfigBuilder) MustBuild() IConfig {
 	cfg, err := b.Build()
 
 	if err != nil {
-		log.Fatalf("Config could not be built due to an error: %v", err)
+		log.Panicf("Config could not be built due to an error: %v", err)
 	}
 
 	return cfg

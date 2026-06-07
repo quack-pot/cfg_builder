@@ -5,6 +5,7 @@ import (
 	"errors"
 	"reflect"
 	"strings"
+	"sync"
 )
 
 type IConfig interface {
@@ -16,6 +17,8 @@ type IConfig interface {
 
 type t_Config struct {
 	data map[string]any
+
+	mutex sync.RWMutex
 }
 
 var ErrInvalidDst error = errors.New("Destination must be pointer type and non-nil.")
@@ -27,6 +30,9 @@ func NewConfig(data map[string]any) IConfig {
 }
 
 func (c *t_Config) Get(key string) (any, bool) {
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
+
 	value_map := c.data
 	split_keys := strings.Split(key, string(CONFIG_KEY_SPLITTER))
 	last_key_index := len(split_keys) - 1
@@ -53,6 +59,9 @@ func (c *t_Config) Get(key string) (any, bool) {
 }
 
 func (c *t_Config) Set(key string, value any) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
 	value_map := c.data
 	split_keys := strings.Split(key, string(CONFIG_KEY_SPLITTER))
 	last_key_index := len(split_keys) - 1
@@ -82,9 +91,12 @@ func (c *t_Config) Set(key string, value any) {
 }
 
 func (c *t_Config) Bind(dst any, prefix string) error {
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
+
 	dst_val := reflect.ValueOf(dst)
 
-	if dst_val.IsNil() || dst_val.Kind() != reflect.Ptr {
+	if dst_val.Kind() != reflect.Pointer || dst_val.IsNil() {
 		return ErrInvalidDst
 	}
 
