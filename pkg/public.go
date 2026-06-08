@@ -21,6 +21,8 @@ type IConfig = internal.IConfig
 type IConfigBuilder = internal.IConfigBuilder
 type IConfigProvider = internal.IConfigProvider
 
+type DurationString = internal.DurationString
+
 // *=================================================
 // *
 // * Constructors

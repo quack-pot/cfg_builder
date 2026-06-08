@@ -1,6 +1,9 @@
 package internal
 
 import (
+	"encoding/json"
+	"fmt"
+	"log"
 	"os"
 	"strings"
 
@@ -17,21 +20,48 @@ func NewConfigProviderENV(filenames ...string) IConfigProvider {
 	}
 }
 
-func (p *t_ConfigProviderENV) Load() (map[string]any, error) {
-	if err := godotenv.Load(p.filenames...); err != nil {
-		return nil, err
-	}
+func EnvDataToJSON(data map[string]any) (string, error) {
+	var inner_content []string = make([]string, len(data))
 
-	var data map[string]any = make(map[string]any)
-	for _, raw_env := range os.Environ() {
-		split_env := strings.SplitN(raw_env, "=", 2)
+	var idx int = 0
+	for key := range data {
+		inner_data := data[key]
 
-		if len(split_env) < 2 {
-			continue
+		switch inner_data := inner_data.(type) {
+		case map[string]any:
+			inner_map_content, err := EnvDataToJSON(inner_data)
+
+			if err != nil {
+				return "", err
+			}
+
+			inner_content[idx] = fmt.Sprintf("%q:%s", key, inner_map_content)
+
+		case string:
+			if IsLiteralJSON(inner_data) {
+				inner_content[idx] = fmt.Sprintf("%q:%s", key, inner_data)
+				break
+			}
+
+			inner_content[idx] = fmt.Sprintf("%q:%q", key, inner_data)
+
+		default:
+			log.Panicf("[Error]: Unexpected ENV type (%v)", inner_data)
 		}
 
-		key := strings.ToLower(strings.TrimSpace(split_env[0]))
-		value := strings.TrimSpace(split_env[1])
+		idx++
+	}
+
+	return fmt.Sprintf("{%s}", strings.Join(inner_content, ",")), nil
+}
+
+func (p *t_ConfigProviderENV) loadEnvironment(
+	environ map[string]string,
+) (map[string]any, error) {
+	var data map[string]any = make(map[string]any)
+	for raw_key, raw_value := range environ {
+		key := strings.TrimSpace(raw_key)
+		value := strings.TrimSpace(raw_value)
 
 		sub_keys := strings.Split(key, string(CONFIG_KEY_SPLITTER))
 		last_key_index := len(sub_keys) - 1
@@ -57,5 +87,41 @@ func (p *t_ConfigProviderENV) Load() (map[string]any, error) {
 		value_map[sub_keys[last_key_index]] = value
 	}
 
-	return data, nil
+	json_raw, err := EnvDataToJSON(data)
+	if err != nil {
+		return nil, err
+	}
+
+	var result map[string]any = make(map[string]any)
+	if err := json.Unmarshal([]byte(json_raw), &result); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func (p *t_ConfigProviderENV) Load() (map[string]any, error) {
+	if len(p.filenames) > 0 {
+		environ, err := godotenv.Read(p.filenames...)
+
+		if err != nil {
+			return nil, err
+		}
+
+		return p.loadEnvironment(environ)
+	}
+
+	var environ map[string]string = make(map[string]string)
+	for _, env := range os.Environ() {
+		parts := strings.SplitN(env, "=", 2)
+
+		if len(parts) < 2 {
+			log.Printf("[Warning]: Malformed environment variable being skipped (%s).", env)
+			continue
+		}
+
+		environ[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
+	}
+
+	return p.loadEnvironment(environ)
 }

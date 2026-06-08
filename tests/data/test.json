@@ -1,0 +1,32 @@
+{
+    "alpha": 5.0,
+    "bravo": "Hello, World!",
+    "charlie": {
+        "delta": 2,
+        "echo": false,
+        "foxtrot": [
+            {
+                "foxtrot_alpha": "Item A",
+                "foxtrot_bravo": -100.50
+            }, {
+                "foxtrot_alpha": "Item B",
+                "foxtrot_bravo": 1.00
+            }, {
+                "foxtrot_alpha": "Item C",
+                "foxtrot_bravo": -99.99
+            }, {
+                "foxtrot_alpha": "Item D",
+                "foxtrot_bravo": 1234.56
+            }
+        ],
+        "golf": {
+            "hotel": 3.14,
+            "india": "61s"
+        }
+    },
+    "juliet": -7,
+    "kilo": true,
+    "lima": [0,1,2,3,4],
+
+    "untagged": 777
+}

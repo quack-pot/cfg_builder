@@ -9,6 +9,7 @@ type IConfigBuilder interface {
 	AddProvider(provider IConfigProvider) IConfigBuilder
 	AddJSON(filenames ...string) IConfigBuilder
 	AddENV(filenames ...string) IConfigBuilder
+	AddExternalEnvironment() IConfigBuilder
 
 	Build() (IConfig, error)
 	MustBuild() IConfig
@@ -35,13 +36,15 @@ func (b *t_ConfigBuilder) AddProvider(provider IConfigProvider) IConfigBuilder {
 }
 
 func (b *t_ConfigBuilder) AddJSON(filenames ...string) IConfigBuilder {
-	b.AddProvider(NewConfigProviderJSON(filenames...))
-	return b
+	return b.AddProvider(NewConfigProviderJSON(filenames...))
 }
 
 func (b *t_ConfigBuilder) AddENV(filenames ...string) IConfigBuilder {
-	b.AddProvider(NewConfigProviderENV(filenames...))
-	return b
+	return b.AddProvider(NewConfigProviderENV(filenames...))
+}
+
+func (b *t_ConfigBuilder) AddExternalEnvironment() IConfigBuilder {
+	return b.AddENV()
 }
 
 func MergeProviderData(provider_data map[string]any, all_data map[string]any) map[string]any {
@@ -102,7 +105,7 @@ func (b *t_ConfigBuilder) MustBuild() IConfig {
 	cfg, err := b.Build()
 
 	if err != nil {
-		log.Panicf("Config could not be built due to an error: %v", err)
+		log.Panicf("[Error]: Config could not be built due to an error: %v", err)
 	}
 
 	return cfg
